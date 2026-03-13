@@ -9,6 +9,7 @@ import PredictionPanel from './components/PredictionPanel'
 import AdminModal from './components/AdminModal'
 import LoadingAnimation from './components/LoadingAnimation'
 import axios from 'axios'
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || ''
 
 function App() {
   const [user, setUser] = useState(null)
