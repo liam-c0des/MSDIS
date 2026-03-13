@@ -8,7 +8,9 @@ from auth import init_db, get_user, verify_password, create_user, user_exists, g
 
 app = Flask(__name__, static_folder='../frontend/dist', static_url_path='/')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-CORS(app, supports_credentials=True)
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+CORS(app, supports_credentials=True, origins=["https://msdis-front.onrender.com"])
 
 @app.route('/')
 def serve_index():
