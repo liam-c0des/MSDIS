@@ -1,5 +1,5 @@
-# Poseidon Watch
-### MSDIS — Maldives Search and Rescue Decision Information System
+# code name-Poseidon Watch
+### MSDIS — Maritime Search and Rescue Decision Information System
 
 A full-stack maritime web application providing drift prediction and SAR decision support for Maldives Search and Rescue Coordination.
 
