@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, Response, send_from_directory, session
 from flask_cors import CORS
 import json
-from drift_model import DriftSimulator
+from backend.drift_model import DriftSimulator
 from geojson import Feature, FeatureCollection, Polygon, Point
 from auth import init_db, get_user, verify_password, create_user, user_exists, get_pending_users, approve_user, reject_user, get_all_users, get_user_count, reset_user_password, delete_user
 
