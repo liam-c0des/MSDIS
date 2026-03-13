@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-bg: #0a0a0a;
+  --color-dark-panel: #141414;
+  --color-dark-border: #2a2a2a;
+  --color-dark-hover: #1e1e1e;
+  
+  --color-monitor-green: #0f5040;
+  --color-monitor-bright-green: #16a34a;
+  --color-monitor-accent: #1035AC;
+  
+  --color-monitor-red: #dc2626;
+  --color-monitor-orange: #f97316;
+  --color-monitor-yellow: #eab308;
+  
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #1035AC;
+  --color-navy-800: #0d2b8c;
+  --color-navy-900: #0a1e5e;
+  --color-navy-950: #071440;
+  
+  --color-ocean-300: #8bb3f2;
+  --color-ocean-400: #5d8df0;
+  --color-ocean-500: #1035AC;
+  --color-ocean-600: #0d2b8c;
+  --color-ocean-700: #00689a;
+  --color-ocean-800: #00507c;
+  --color-ocean-900: #003a5e;
+  
+  --color-gold-400: #ffcc33;
+  --color-gold-500: #fdb913;
+  --color-gold-600: #e5a70d;
+}
+
+* {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+}
+
+select option {
+  background-color: #0a3463 !important;
+  color: white !important;
+}
+
+select {
+  color-scheme: dark !important;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.probability-zone-high {
+  fill: #ff6b35;
+  fill-opacity: 0.3;
+  stroke: #ff6b35;
+  stroke-width: 2;
+}
+
+.probability-zone-medium {
+  fill: #ffc857;
+  fill-opacity: 0.25;
+  stroke: #ffc857;
+  stroke-width: 2;
+}
+
+.probability-zone-low {
+  fill: #0080b8;
+  fill-opacity: 0.2;
+  stroke: #0080b8;
+  stroke-width: 2;
+}

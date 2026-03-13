@@ -1,0 +1,29 @@
+{
+  "name": "poseidon-watch-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dotlottie/react-player": "^1.6.19",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@turf/turf": "^7.3.1",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
+    "axios": "^1.13.2",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.561.0",
+    "mapbox-gl": "^3.19.1",
+    "postcss": "^8.5.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-leaflet": "^5.0.0",
+    "react-lottie-player": "^2.1.0",
+    "react-map-gl": "^8.1.0",
+    "tailwindcss": "^4.1.18",
+    "vite": "^7.3.0"
+  }
+}
