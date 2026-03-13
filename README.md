@@ -76,4 +76,4 @@ poseidon-watch/
 
 ---
 
-*Built for Maldives Search and Rescue Coordination — MSDIS Project*
+*Built for maritime Search and Rescue Coordination — MSDIS Project*
