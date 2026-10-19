@@ -5,15 +5,47 @@ import os
 
 DB_PATH = 'poseidon.db'
 
+# The admin password is NEVER stored in code. Set it as an environment
+# variable on the server (Render dashboard > Environment):
+#   ADMIN_PASSWORD = <your password>
+#   ADMIN_USERNAME = Admin   (optional, defaults to "Admin")
+# On every startup the admin account is created or reset to match.
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'Admin')
+
+
+def _sync_admin_from_env(cursor):
+    """Create or reset the admin account from ADMIN_PASSWORD, if set."""
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    if not admin_password:
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+        if cursor.fetchone()[0] == 0:
+            print("WARNING: no admin account exists. Set ADMIN_PASSWORD to create one.")
+        return False
+
+    password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+    cursor.execute('SELECT id FROM users WHERE username = ?', (ADMIN_USERNAME,))
+    if cursor.fetchone():
+        cursor.execute(
+            "UPDATE users SET password_hash = ?, role = 'admin', approved = 1 WHERE username = ?",
+            (password_hash, ADMIN_USERNAME)
+        )
+    else:
+        cursor.execute(
+            'INSERT INTO users (username, password_hash, role, approved) VALUES (?, ?, ?, ?)',
+            (ADMIN_USERNAME, password_hash, 'admin', 1)
+        )
+    return True
+
+
 def init_db():
-    """Initialize database with users table"""
+    """Initialize database with users table and sync the admin account"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
     # Check if table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
     table_exists = cursor.fetchone() is not None
-    
+
     if not table_exists:
         # Create new table with approved column
         cursor.execute('''
@@ -26,32 +58,21 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        # Create first admin user (auto-approved)
-        admin_password = 'ADMIN4321'
-        password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-        cursor.execute(
-            'INSERT INTO users (username, password_hash, role, approved) VALUES (?, ?, ?, ?)',
-            ('Admin', password_hash, 'admin', 1)
-        )
-        
-        conn.commit()
-        conn.close()
-        return True
     else:
         # Check if approved column exists (migration)
         cursor.execute("PRAGMA table_info(users)")
         columns = [row[1] for row in cursor.fetchall()]
-        
+
         if 'approved' not in columns:
             # Add approved column to existing table
             cursor.execute('ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0')
-            # Auto-approve existing users (except Admin is already approved by default)
-            cursor.execute('UPDATE users SET approved = 1 WHERE role = "admin"')
-            conn.commit()
-        
-        conn.close()
-        return False
+            # Auto-approve existing admins
+            cursor.execute("UPDATE users SET approved = 1 WHERE role = 'admin'")
+
+    _sync_admin_from_env(cursor)
+    conn.commit()
+    conn.close()
+    return not table_exists
 
 def get_user(username):
     """Get user by username"""

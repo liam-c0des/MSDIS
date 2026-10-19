@@ -1,8 +1,14 @@
 import os
+import sys
 from flask import Flask, request, jsonify, Response, send_from_directory, session
 from flask_cors import CORS
 import json
-from backend.drift_model import DriftSimulator
+
+# Make sibling modules importable whether the app starts from the repo root
+# (gunicorn backend.app:app) or from inside backend/ (gunicorn app:app).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from drift_model import DriftSimulator
 from geojson import Feature, FeatureCollection, Polygon, Point
 from auth import init_db, get_user, verify_password, create_user, user_exists, get_pending_users, approve_user, reject_user, get_all_users, get_user_count, reset_user_password, delete_user
 
@@ -383,15 +389,19 @@ def export_geojson():
     predictions = data.get('predictions', [])
     probability_zones = data.get('probability_zones', [])
     input_data = data.get('input', {})
-    
+    env_data = data.get('environmental_data', {}) or {}
+
     features = []
-    
+
     features.append(Feature(
         geometry=Point((input_data.get('longitude', 0), input_data.get('latitude', 0))),
         properties={
             "type": "last_known_position",
             "name": "Last Known Position",
-            "object_type": input_data.get('object_name', 'Unknown')
+            "object_type": input_data.get('object_name', 'Unknown'),
+            "is_simulated": env_data.get('is_simulated', False),
+            "data_source": env_data.get('data_source', 'Unknown'),
+            "warnings": env_data.get('warnings', [])
         }
     ))
     
@@ -421,11 +431,12 @@ def export_geojson():
         ))
     
     fc = FeatureCollection(features)
-    
+    filename = 'SIMULATED_search_zones.geojson' if env_data.get('is_simulated') else 'search_zones.geojson'
+
     return Response(
         json.dumps(fc, indent=2),
         mimetype='application/geo+json',
-        headers={'Content-Disposition': 'attachment; filename=search_zones.geojson'}
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
 
 if __name__ == '__main__':

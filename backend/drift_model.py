@@ -182,10 +182,15 @@ class DriftSimulator:
             base_wave = 0.2 + (wind_speed_knots / 20) * 2.5
             wave_height = max(0.5, min(base_wave, 4.0))
             
-            # Estimate current from wind (simplified: ~10-15% of wind speed, perpendicular)
+            # OpenWeatherMap gives NO ocean current data. This is a rough
+            # wind-driven estimate only, flagged as "estimated" below.
+            # Wind direction is meteorological (blowing FROM), so the
+            # estimated current is set relative to the downwind direction.
+            # No random jitter: the same inputs must give the same answer.
             current_speed = wind_speed_knots * 0.12
-            current_direction = (wind_direction + 45 + np.random.random() * 30) % 360
-            
+            wind_toward = (wind_direction + 180) % 360
+            current_direction = (wind_toward + 45) % 360
+
             return {
                 "wind": {
                     "speed_knots": round(wind_speed_knots, 1),
@@ -200,7 +205,12 @@ class DriftSimulator:
                     "height_meters": round(wave_height, 1),
                     "description": self._wave_description(wave_height)
                 },
-                "data_source": f"OpenWeatherMap (Updated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')})"
+                "data_source": f"OpenWeatherMap (Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')})",
+                "data_quality": {
+                    "wind": "live",
+                    "current": "estimated",
+                    "waves": "estimated"
+                }
             }
         except Exception as e:
             print(f"OpenWeatherMap API error: {str(e)}")
@@ -231,7 +241,12 @@ class DriftSimulator:
                 "height_meters": round(wave_height, 1),
                 "description": self._wave_description(wave_height)
             },
-            "data_source": "Environmental Data"
+            "data_source": "SIMULATED DATA (random test values, not real conditions)",
+            "data_quality": {
+                "wind": "simulated",
+                "current": "simulated",
+                "waves": "simulated"
+            }
         }
     
     def _wind_description(self, speed_knots):
@@ -264,26 +279,27 @@ class DriftSimulator:
     
     def propagate_position_euler(self, lat, lon, hours, wind_speed, wind_dir,
                                  current_speed, current_dir, leeway_rate, leeway_angle,
-                                 use_copernicus=True):
+                                 use_copernicus=True, copernicus_current=None):
         """Propagate position using Euler integration with optional Copernicus currents
-        
+
         Args:
             lat, lon: Starting position (degrees)
             hours: Simulation time (hours)
             wind_speed: Wind speed (knots)
-            wind_dir: Wind direction (degrees, 0=North)
+            wind_dir: Direction the wind blows TOWARD (degrees, 0=North).
+                      Convert meteorological "from" values before calling.
             current_speed: Current speed (knots)
-            current_dir: Current direction (degrees)
+            current_dir: Direction the current flows TOWARD (degrees)
             leeway_rate: Leeway rate factor
             leeway_angle: Leeway angle (degrees)
             use_copernicus: Use Copernicus current vectors if available
-            
+            copernicus_current: Pre-fetched Copernicus vectors (skips a new download)
+
         Returns:
             tuple: (final_lat, final_lon)
         """
         # Get Copernicus current vectors if available
-        copernicus_current = None
-        if use_copernicus:
+        if use_copernicus and copernicus_current is None:
             copernicus_current = self.get_copernicus_current(lat, lon)
         
         # Calculate wind drift component
@@ -342,8 +358,10 @@ class DriftSimulator:
         
         return current_lat, current_lon
     
-    def calculate_drift(self, lat, lon, hours, wind_speed, wind_dir, 
+    def calculate_drift(self, lat, lon, hours, wind_speed, wind_dir,
                        current_speed, current_dir, leeway_rate, leeway_angle):
+        """Straight-line drift. wind_dir and current_dir are both the
+        direction of travel (TOWARD), in degrees from north."""
         wind_drift_speed = wind_speed * leeway_rate
         wind_drift_dir = (wind_dir + leeway_angle) % 360
         
@@ -455,10 +473,30 @@ class DriftSimulator:
         wave_data = self.get_wave_data(lat, lon)
         wave_height = wave_data['significant_wave_height_m'] if wave_data else None
         
+        quality = env_data['data_quality']
+        if wave_data:
+            quality['waves'] = 'live'
+
         wind_speed = env_data['wind']['speed_knots']
-        wind_dir = env_data['wind']['direction_degrees']
+        # Wind data is meteorological: direction_degrees is where the wind
+        # blows FROM. An object drifts downwind, so flip it 180 degrees to
+        # get the direction of travel. (Bug fix: drift used to go upwind.)
+        wind_dir = (env_data['wind']['direction_degrees'] + 180) % 360
         current_speed = env_data['current']['speed_knots']
         current_dir = env_data['current']['direction_degrees']
+
+        # Fetch Copernicus currents once per simulation, not once per time step
+        copernicus_current = None
+        if use_copernicus_currents and self.copernicus_available:
+            copernicus_current = self.get_copernicus_current(lat, lon)
+        if copernicus_current:
+            u = copernicus_current['eastward_m_s']
+            v = copernicus_current['northward_m_s']
+            env_data['current'] = {
+                "speed_knots": round(math.hypot(u, v) / 0.51444, 2),
+                "direction_degrees": round((math.degrees(math.atan2(u, v)) + 360) % 360, 1)
+            }
+            quality['current'] = 'live'
         
         # Incorporate vessel speed into the drift model
         # For a vessel moving under its own power, we add its velocity vector
@@ -492,13 +530,14 @@ class DriftSimulator:
         
         for t in time_steps:
             # Use Euler integration with optional Copernicus currents
-            if use_copernicus_currents and self.copernicus_available:
+            if copernicus_current:
                 pred_lat, pred_lon = self.propagate_position_euler(
                     lat, lon, t,
                     wind_speed, wind_dir,
                     current_speed, current_dir,
                     leeway_rate, leeway_angle,
-                    use_copernicus=True
+                    use_copernicus=True,
+                    copernicus_current=copernicus_current
                 )
             else:
                 # Fall back to traditional calculation
@@ -555,11 +594,36 @@ class DriftSimulator:
                 "center": {"latitude": round(pred_lat, 6), "longitude": round(pred_lon, 6)}
             })
         
+        env_data['is_simulated'] = quality['wind'] == 'simulated'
+        env_data['warnings'] = self._build_warnings(quality)
+
         return {
             "environmental_data": env_data,
             "predictions": predictions,
             "probability_zones": probability_zones
         }
+
+    def _build_warnings(self, quality):
+        """Plain-language warnings so an operator knows what is real and what is not."""
+        warnings = []
+        if quality['wind'] == 'simulated':
+            warnings.append(
+                "SIMULATED DATA: no live weather feed. Wind, current and waves are "
+                "random test values. Do NOT use this prediction for a real search."
+            )
+            return warnings
+        if quality['current'] != 'live':
+            warnings.append(
+                "Current is estimated from wind speed, not measured. "
+                "Treat the drift track as approximate."
+            )
+        if quality['waves'] != 'live':
+            warnings.append("Wave height is estimated from wind speed, not measured.")
+        warnings.append(
+            "Search zones use a fixed-growth circle and placeholder probabilities, "
+            "not a validated SAR error model."
+        )
+        return warnings
     
     def _haversine(self, lat1, lon1, lat2, lon2):
         lat1_rad = math.radians(lat1)

@@ -55,6 +55,12 @@ Environment variables required:
 - `MAPBOX_TOKEN` — your Mapbox public token
 - `SECRET_KEY` — Flask secret key
 - `FLASK_ENV` — set to `production`
+- `ADMIN_PASSWORD` — admin account password. Created or reset on every startup. Never commit it.
+- `ADMIN_USERNAME` — optional, defaults to `Admin`
+
+Environment variables for real weather data (without these the app runs on SIMULATED data and shows a red warning):
+- `OPENWEATHERMAP_API_KEY` — live wind
+- `COPERNICUS_USERNAME` / `COPERNICUS_PASSWORD` — live ocean currents
 
 ---
 

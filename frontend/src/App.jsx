@@ -155,7 +155,15 @@ function App() {
           
           <div className="flex-1 relative">
             <LoadingAnimation isLoading={simLoading} />
-            <MapView 
+            {simulationData?.environmental_data?.is_simulated && (
+              <div
+                role="alert"
+                className="absolute top-3 left-1/2 -translate-x-1/2 z-20 max-w-[90%] px-4 py-2 rounded-lg bg-red-700 text-white text-sm font-semibold shadow-lg pointer-events-none text-center"
+              >
+                SIMULATED DATA: not real conditions. Do not use for a real search.
+              </div>
+            )}
+            <MapView
               simulationData={simulationData}
               searchAsset={searchAsset}
             />
